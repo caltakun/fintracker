@@ -60,7 +60,6 @@ const getGreeting=()=>{const h=new Date().getHours();return h<12?"Good morning":
 const initials=name=>String(name||"U").trim().split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0].toUpperCase()).join("")||"U";
 const today=new Date().toISOString().slice(0,10);
 const protectionOptions=[
- {id:"emergency",label:"Emergency fund",name:"Emergency Fund",type:"Emergency Fund",keywords:["emergency"]},
  {id:"health",label:"Health insurance",name:"Health Insurance",type:"Insurance",keywords:["health insurance","medical insurance","health"]},
  {id:"life",label:"Life insurance",name:"Life Insurance",type:"Insurance",keywords:["life insurance","life"]},
  {id:"income",label:"Income protection",name:"Income Protection",type:"Protection",keywords:["income protection","income"]},
@@ -92,7 +91,6 @@ function createInitialAdminData(){const legacy=adminLegacyData();if(legacy)retur
   {id:2,name:"Index Fund",type:"Mutual Fund",capital:10000,value:11200}
  ],
  protection:[
-  {id:1,name:"Emergency Fund",type:"Emergency Fund",amount:30000,status:"Active"},
   {id:2,name:"Life Insurance",type:"Insurance",amount:500000,status:"Active"}
  ]};}
 function loadUserState(username){
@@ -103,7 +101,7 @@ function loadUserState(username){
    if(!storedData)storedData=JSON.parse(localStorage.getItem("fintrackData:admin")||"null")||adminLegacyData();
    if(!storedSettings)storedSettings=JSON.parse(localStorage.getItem("fintrackSettings:admin")||"null")||adminLegacySettings();
  }
- if(storedData){data=storedData;save();}else if(u===userSlug(AUTH_EMAIL)){data=createInitialAdminData();save();}else data=emptyData();
+ if(storedData){data={...emptyData(),...storedData};data.protection=(data.protection||[]).filter(record=>!((String(record.name||"")+" "+String(record.type||"")).toLowerCase().includes("emergency fund")));save();}else if(u===userSlug(AUTH_EMAIL)){data=createInitialAdminData();data.protection=(data.protection||[]).filter(record=>!((String(record.name||"")+" "+String(record.type||"")).toLowerCase().includes("emergency fund")));save();}else data=emptyData();
  if(storedSettings){settings={...defaultSettings,...storedSettings};persistSettings();}
  else {const user=getUsers().find(x=>normalizeEmail(x.email)===normalizeEmail(String(username)));settings={...defaultSettings,displayName:user?.displayName||defaultSettings.displayName};persistSettings();}
 }
@@ -178,10 +176,10 @@ function renderGoals(){
 function renderInvestments(){investmentTable.innerHTML=data.investments.length?data.investments.map(x=>{let g=x.value-x.capital;return `<tr><td><b>${escapeHtml(x.name)}</b></td><td><span class="tag">${escapeHtml(x.type)}</span></td><td>${money(x.capital)}</td><td>${money(x.value)}</td><td class="${g>=0?"amount-income":"amount-expense"}">${g>=0?"+":""}${money(g)}</td><td>${rowActions(x.id,"investments")}</td></tr>`}).join(""):`<tr><td colspan="6" class="empty"><b>No investments yet</b><br><small>Add your first investment to start tracking portfolio performance.</small></td></tr>`}
 function protectionOptionFor(record){
  const text=(String(record.name||"")+" "+String(record.type||"")).toLowerCase().trim();
- for(const option of protectionOptions.slice(0,4)){
+ for(const option of protectionOptions){
   if(option.keywords.some(k=>text.includes(k))) return option;
  }
- return protectionOptions[4];
+ return protectionOptions.find(option=>option.id==="other")||protectionOptions[protectionOptions.length-1];
 }
 function getProtectionRecord(optionId){
  return data.protection.find(record=>protectionOptionFor(record).id===optionId);
